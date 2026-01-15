@@ -119,7 +119,7 @@ export default function MonitorsList() {
                 onClick={() => handleDelete(monitor.id)}
                 disabled={deleting === monitor.id}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4 text-red-600" />
               </Button>
             </div>
           </CardContent>

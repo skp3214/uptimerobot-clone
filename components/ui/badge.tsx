@@ -18,9 +18,9 @@ const badgeVariants = cva(
         outline:
           'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
         up:
-          'border-transparent bg-[--status-up] text-[--status-up-foreground] [a&]:hover:opacity-90',
+          'border-transparent bg-transparent text-green-600 font-semibold [a&]:hover:opacity-90',
         down:
-          'border-transparent bg-[--status-down] text-[--status-down-foreground] [a&]:hover:opacity-90',
+          'border-transparent bg-transparent text-red-600 font-semibold [a&]:hover:opacity-90',
       },
     },
     defaultVariants: {
