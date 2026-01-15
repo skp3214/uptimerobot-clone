@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSupabaseServer } from "@/lib/supabase/server"
+import { getSupabaseServiceRole } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
 
 async function checkMonitorHealth(url: string): Promise<{
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = await getSupabaseServer()
+    const supabase = getSupabaseServiceRole()
 
     // Get all monitors that need to be checked
     const { data: monitors, error: fetchError } = await supabase.from("monitors").select("*").eq("is_active", true)
