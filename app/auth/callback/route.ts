@@ -23,13 +23,29 @@ export async function GET(request: NextRequest) {
 
   try {
     const supabase = await getSupabaseServer()
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
     if (exchangeError) {
       console.error("[v0] Code exchange error:", exchangeError.message)
       const errorUrl = new URL("/auth", request.url)
       errorUrl.searchParams.set("error", exchangeError.message)
       return NextResponse.redirect(errorUrl)
+    }
+
+    // Ensure user record exists in users table (in case trigger didn't fire)
+    if (data.user) {
+      const { error: upsertError } = await supabase.from("users").upsert(
+        {
+          id: data.user.id,
+          email: data.user.email!,
+          full_name: data.user.user_metadata?.full_name || null,
+        },
+        { onConflict: "id" }
+      )
+
+      if (upsertError) {
+        console.error("[v0] Error creating user record:", upsertError.message)
+      }
     }
 
     console.log("[v0] Successfully confirmed email and exchanged code, redirecting to dashboard")

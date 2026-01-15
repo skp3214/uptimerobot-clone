@@ -17,7 +17,6 @@ export default function EditMonitorPage() {
   const [name, setName] = useState("")
   const [url, setUrl] = useState("")
   const [monitorInterval, setMonitorInterval] = useState("300")
-  const [notificationEmail, setNotificationEmail] = useState("")
   const [isActive, setIsActive] = useState(true)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -32,9 +31,8 @@ export default function EditMonitorPage() {
         setMonitor(data)
         setName(data.name)
         setUrl(data.url)
-        setMonitorInterval(data.interval.toString())
-        setNotificationEmail(data.notification_email)
-        setIsActive(data.is_active)
+        setMonitorInterval(data.check_interval?.toString() || "300")
+        setIsActive(data.is_active ?? true)
       }
       setLoading(false)
     }
@@ -47,21 +45,27 @@ export default function EditMonitorPage() {
     setSaving(true)
     setError("")
 
-    const supabase = getSupabaseClient()
-
     try {
-      const { error: updateError } = await supabase
-        .from("monitors")
-        .update({
+      const response = await fetch("/api/monitors/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          monitorId: params.id,
           name,
           url,
-          interval: Number.parseInt(monitorInterval),
-          notification_email: notificationEmail,
+          check_interval: Number.parseInt(monitorInterval),
           is_active: isActive,
-        })
-        .eq("id", params.id)
+        }),
+      })
 
-      if (updateError) throw updateError
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update monitor")
+      }
+
       router.push(`/dashboard/monitor/${params.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update monitor")
@@ -119,16 +123,6 @@ export default function EditMonitorPage() {
                   <option value="1800">Every 30 minutes</option>
                   <option value="3600">Every 1 hour</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">Notification Email</label>
-                <Input
-                  type="email"
-                  value={notificationEmail}
-                  onChange={(e) => setNotificationEmail(e.target.value)}
-                  required
-                />
               </div>
 
               <div className="flex items-center gap-2">

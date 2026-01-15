@@ -112,6 +112,7 @@ ALTER TABLE status_page_monitors ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for users
 CREATE POLICY "Users can view their own data" ON users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own data" ON users FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Users can update their own data" ON users FOR UPDATE USING (auth.uid() = id);
 
 -- RLS Policies for monitors
@@ -142,3 +143,25 @@ CREATE POLICY "Users can delete their own status pages" ON status_pages FOR DELE
 CREATE POLICY "Anyone can view public status page monitors" ON status_page_monitors FOR SELECT 
   USING (status_page_id IN (SELECT id FROM status_pages WHERE is_public = true) OR 
          status_page_id IN (SELECT id FROM status_pages WHERE user_id = auth.uid()));
+
+-- Function to handle new user creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, full_name, created_at, updated_at)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name',
+    NOW(),
+    NOW()
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to automatically create user record on signup
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();

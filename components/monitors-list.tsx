@@ -11,6 +11,7 @@ import Link from "next/link"
 export default function MonitorsList() {
   const [monitors, setMonitors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchMonitors = async () => {
@@ -35,6 +36,36 @@ export default function MonitorsList() {
 
     fetchMonitors()
   }, [])
+
+  const handleDelete = async (monitorId: string) => {
+    if (!confirm("Are you sure you want to delete this monitor?")) {
+      return
+    }
+
+    setDeleting(monitorId)
+
+    try {
+      const response = await fetch("/api/monitors/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ monitorId }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete monitor")
+      }
+
+      // Remove from local state
+      setMonitors((prev) => prev.filter((m) => m.id !== monitorId))
+    } catch (error) {
+      alert("Failed to delete monitor")
+      console.error(error)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-8">Loading monitors...</div>
@@ -80,7 +111,12 @@ export default function MonitorsList() {
                   Edit
                 </Button>
               </Link>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDelete(monitor.id)}
+                disabled={deleting === monitor.id}
+              >
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>

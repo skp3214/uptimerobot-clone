@@ -36,16 +36,24 @@ export default function NewMonitorPage() {
     }
 
     try {
-      const { error: insertError } = await supabase.from("monitors").insert({
-        user_id: user.id,
-        name,
-        url,
-        interval: Number.parseInt(monitorInterval),
-        notification_email: notificationEmail,
-        status: "pending",
+      // Call server-side API to create monitor and check its status
+      const response = await fetch("/api/monitors/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          url,
+          check_interval: Number.parseInt(monitorInterval),
+        }),
       })
 
-      if (insertError) throw insertError
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create monitor")
+      }
 
       router.push("/dashboard")
     } catch (err) {

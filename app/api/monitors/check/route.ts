@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
     // Get all monitors that need to be checked
     const { data: monitors, error: fetchError } = await supabase.from("monitors").select("*").eq("is_active", true)
 
+    console.log("[Monitor Check] Found monitors:", monitors?.length || 0, "Error:", fetchError)
+
     if (fetchError) throw fetchError
 
     for (const monitor of monitors || []) {
@@ -44,26 +46,37 @@ export async function POST(request: NextRequest) {
         .from("monitors")
         .update({
           status,
-          response_time: responseTime,
-          last_check_time: new Date().toISOString(),
-          last_status_code: statusCode,
+          last_check: new Date().toISOString(),
         })
         .eq("id", monitor.id)
 
+      // Log the check in monitor_checks table
+      await supabase.from("monitor_checks").insert({
+        monitor_id: monitor.id,
+        status,
+        response_time: responseTime,
+        status_code: statusCode,
+      })
+
       // If status changed, create incident and send email
-      if (previousStatus !== status && previousStatus !== "pending") {
-        const incidentType = status === "down" ? "down" : "up"
+      if (previousStatus !== status) {
+        const incidentStatus = status === "down" ? "open" : "resolved"
 
         // Create incident record
-        await supabase.from("incidents").insert({
+        const { data: incident } = await supabase.from("incidents").insert({
           monitor_id: monitor.id,
-          status: incidentType,
-          message: `Website is ${status}`,
-          created_at: new Date().toISOString(),
-        })
+          status: incidentStatus,
+          started_at: new Date().toISOString(),
+        }).select().single()
 
-        // Send notification email
-        if (monitor.notification_email) {
+        // Get user email for notification
+        const { data: user } = await supabase
+          .from("users")
+          .select("email")
+          .eq("id", monitor.user_id)
+          .single()
+
+        if (user?.email && incident) {
           const subject = `ALERT: ${monitor.name} is ${status.toUpperCase()}`
           const html = `
             <h2>${monitor.name} is ${status.toUpperCase()}</h2>
@@ -73,11 +86,31 @@ export async function POST(request: NextRequest) {
             <p>Time: ${new Date().toISOString()}</p>
           `
 
-          await sendEmail({
-            to: monitor.notification_email,
-            subject,
-            html,
-          })
+          try {
+            await sendEmail({
+              to: user.email,
+              subject,
+              html,
+            })
+
+            // Log notification
+            await supabase.from("notifications").insert({
+              user_id: monitor.user_id,
+              monitor_id: monitor.id,
+              incident_id: incident.id,
+              email_sent: true,
+              sent_at: new Date().toISOString(),
+            })
+          } catch (emailError) {
+            console.error("Failed to send email:", emailError)
+            // Log failed notification
+            await supabase.from("notifications").insert({
+              user_id: monitor.user_id,
+              monitor_id: monitor.id,
+              incident_id: incident.id,
+              email_sent: false,
+            })
+          }
         }
       }
     }
