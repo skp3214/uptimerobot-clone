@@ -28,16 +28,12 @@ export async function sendEmail({
 }) {
   const transporter = getEmailTransporter()
 
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM_EMAIL,
-      to,
-      subject,
-      html,
-    })
-    return { success: true, messageId: info.messageId }
-  } catch (error) {
-    console.error("Email send error:", error)
-    return { success: false, error }
-  }
+  const info = await transporter.sendMail({
+    from: process.env.SMTP_FROM_EMAIL,
+    to,
+    subject,
+    html,
+  })
+  
+  return { success: true, messageId: info.messageId }
 }
