@@ -71,10 +71,11 @@ export async function GET(request: NextRequest) {
 
       // If status changed, create incident and send email
       if (previousStatus !== status) {
+        console.log(`[Cron] Status changed for ${monitor.name}: ${previousStatus} -> ${status}`)
         const incidentStatus = status === "down" ? "open" : "resolved"
 
         // Create incident record
-        const { data: incident } = await supabase
+        const { data: incident, error: incidentError } = await supabase
           .from("incidents")
           .insert({
             monitor_id: monitor.id,
@@ -84,8 +85,16 @@ export async function GET(request: NextRequest) {
           .select()
           .single()
 
+        console.log(`[Cron] Incident created:`, incident, incidentError)
+
         // Get user email for notification
-        const { data: user } = await supabase.from("users").select("email").eq("id", monitor.user_id).single()
+        const { data: user, error: userError } = await supabase
+          .from("users")
+          .select("email")
+          .eq("id", monitor.user_id)
+          .single()
+
+        console.log(`[Cron] User lookup:`, user, userError)
 
         if (user?.email && incident) {
           const subject = `ALERT: ${monitor.name} is ${status.toUpperCase()}`
@@ -124,6 +133,8 @@ export async function GET(request: NextRequest) {
               email_sent: false,
             })
           }
+        } else {
+          console.error(`[Cron] Cannot send email - user: ${user?.email}, incident: ${incident?.id}`)
         }
       }
     }
@@ -131,6 +142,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, checked: monitors?.length || 0 })
   } catch (error) {
     console.error("[Cron] Error:", error)
-    return NextResponse.json({ error: "Cron failed", details: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Cron failed", details: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    )
   }
 }
