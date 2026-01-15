@@ -31,7 +31,10 @@ export async function GET(request: NextRequest) {
   // to trigger monitor checks every 5 minutes
 
   const authHeader = request.headers.get("authorization")
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET
+  
+  // Allow both Bearer token (GitHub Actions) and Vercel Cron internal calls
+  if (authHeader !== `Bearer ${cronSecret}` && authHeader !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
