@@ -1,20 +1,34 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, BarChart3, Bell, Shield } from "lucide-react"
+import { getSupabaseServer } from "@/lib/supabase/server"
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await getSupabaseServer()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary">
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">UptimeMonitor</h1>
           <div className="flex gap-3">
-            <Link href="/auth?mode=signin">
-              <Button variant="ghost">Sign In</Button>
-            </Link>
-            <Link href="/auth">
-              <Button>Get Started</Button>
-            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <Button>Go to Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth?mode=signin">
+                  <Button variant="ghost">Sign In</Button>
+                </Link>
+                <Link href="/auth">
+                  <Button>Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
