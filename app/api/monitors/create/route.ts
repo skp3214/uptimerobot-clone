@@ -73,60 +73,11 @@ export async function POST(request: NextRequest) {
 
     // If the monitor is down on creation, create an incident
     if (initialStatus === "down") {
-      const { data: incident } = await supabase
-        .from("incidents")
-        .insert({
-          monitor_id: monitor.id,
-          status: "open",
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      // Get user email for notification
-      const { data: userData } = await supabase.from("users").select("email").eq("id", user.id).single()
-
-      if (userData?.email && incident) {
-        const subject = `ALERT: ${name} is DOWN`
-        const html = `
-          <h2>${name} is DOWN</h2>
-          <p>Your newly created monitor detected that the website is down.</p>
-          <p><strong>Website:</strong> ${url}</p>
-          <p><strong>Status Code:</strong> ${statusCode || "No response"}</p>
-          <p><strong>Response Time:</strong> ${responseTime}ms</p>
-          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-          <hr>
-          <p style="color: #666; font-size: 12px;">This is an automated alert from UptimeMonitor</p>
-        `
-
-        try {
-          await sendEmail({
-            to: userData.email,
-            subject,
-            html,
-          })
-
-          // Log notification
-          await supabase.from("notifications").insert({
-            user_id: user.id,
-            monitor_id: monitor.id,
-            incident_id: incident.id,
-            email_sent: true,
-            sent_at: new Date().toISOString(),
-          })
-
-          console.log(`[Monitor Create] Email sent to ${userData.email} for down monitor`)
-        } catch (emailError) {
-          console.error("Failed to send email:", emailError)
-          // Log failed notification
-          await supabase.from("notifications").insert({
-            user_id: user.id,
-            monitor_id: monitor.id,
-            incident_id: incident.id,
-            email_sent: false,
-          })
-        }
-      }
+      await supabase.from("incidents").insert({
+        monitor_id: monitor.id,
+        status: "open",
+        started_at: new Date().toISOString(),
+      })
     }
 
     return NextResponse.json({ success: true, monitor })

@@ -94,65 +94,15 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 400 })
     }
 
-    // If status changed, create incident and send email
+    // If status changed, create incident (no email on manual edit)
     if (urlChanged && existingMonitor.status !== newStatus) {
       const incidentStatus = newStatus === "down" ? "open" : "resolved"
 
-      const { data: incident } = await supabase
-        .from("incidents")
-        .insert({
-          monitor_id: monitorId,
-          status: incidentStatus,
-          started_at: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      // Get user email for notification
-      const { data: userData } = await supabase.from("users").select("email").eq("id", user.id).single()
-
-      if (userData?.email && incident) {
-        const subject = `ALERT: ${name} is ${newStatus.toUpperCase()}`
-        const html = `
-          <h2>${name} is ${newStatus.toUpperCase()}</h2>
-          <p>Status changed after updating the monitor URL.</p>
-          <p><strong>Website:</strong> ${url}</p>
-          <p><strong>Status:</strong> ${newStatus}</p>
-          <p><strong>Status Code:</strong> ${statusCode || "No response"}</p>
-          <p><strong>Response Time:</strong> ${responseTime}ms</p>
-          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
-          <hr>
-          <p style="color: #666; font-size: 12px;">This is an automated alert from UptimeMonitor</p>
-        `
-
-        try {
-          await sendEmail({
-            to: userData.email,
-            subject,
-            html,
-          })
-
-          // Log notification
-          await supabase.from("notifications").insert({
-            user_id: user.id,
-            monitor_id: monitorId,
-            incident_id: incident.id,
-            email_sent: true,
-            sent_at: new Date().toISOString(),
-          })
-
-          console.log(`[Monitor Update] Email sent to ${userData.email} for status change`)
-        } catch (emailError) {
-          console.error("Failed to send email:", emailError)
-          // Log failed notification
-          await supabase.from("notifications").insert({
-            user_id: user.id,
-            monitor_id: monitorId,
-            incident_id: incident.id,
-            email_sent: false,
-          })
-        }
-      }
+      await supabase.from("incidents").insert({
+        monitor_id: monitorId,
+        status: incidentStatus,
+        started_at: new Date().toISOString(),
+      })
     }
 
     return NextResponse.json({ success: true, monitor })
