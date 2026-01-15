@@ -93,7 +93,9 @@ export default function MonitorsList() {
               <CardTitle className="text-base">{monitor.name}</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">{monitor.url}</p>
             </div>
-            <Badge variant={monitor.status === "up" ? "default" : "destructive"}>{monitor.status}</Badge>
+            <Badge variant={monitor.status === "up" ? "up" : "down"}>
+              {monitor.status.toUpperCase()}
+            </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="text-sm">
