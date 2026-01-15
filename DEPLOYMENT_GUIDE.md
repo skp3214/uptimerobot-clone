@@ -10,7 +10,7 @@
 
 Add these to your Vercel/hosting environment:
 
-```env
+\`\`\`env
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -26,7 +26,7 @@ SMTP_SECURE=false                  # true for port 465, false for 587
 # App Configuration
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 CRON_SECRET=your-random-secret-key
-```
+\`\`\`
 
 ## Email Configuration Examples
 
@@ -54,9 +54,9 @@ CRON_SECRET=your-random-secret-key
 
 The database schema is automatically created when you run:
 
-```bash
+\`\`\`bash
 npm run seed # or execute scripts/01-init-schema.sql in Supabase
-```
+\`\`\`
 
 This creates:
 - `monitors` - Website monitors
@@ -72,7 +72,7 @@ The monitoring system requires a background job to check monitors every 5 minute
 ### Option 1: Vercel Cron (Recommended)
 
 Create `vercel.json`:
-```json
+\`\`\`json
 {
   "crons": [
     {
@@ -81,38 +81,38 @@ Create `vercel.json`:
     }
   ]
 }
-```
+\`\`\`
 
 ### Option 2: External Cron Service
 
 Use Upstash Cron, EasyCron, or similar:
 
-```bash
+\`\`\`bash
 curl -H "Authorization: Bearer YOUR_CRON_SECRET" \
   https://your-domain.com/api/cron/check-monitors
-```
+\`\`\`
 
 Schedule this to run every 5 minutes.
 
 ### Option 3: Local Development Testing
 
-```bash
+\`\`\`bash
 # Test monitoring manually
 curl -X POST http://localhost:3000/api/monitors/check
 
 # Test cron endpoint
 curl -H "Authorization: Bearer test-secret" \
   http://localhost:3000/api/cron/check-monitors
-```
+\`\`\`
 
 ## Deployment Steps
 
 ### 1. Push to GitHub
-```bash
+\`\`\`bash
 git add .
 git commit -m "Initial UptimeMonitor setup"
 git push origin main
-```
+\`\`\`
 
 ### 2. Deploy to Vercel
 1. Go to vercel.com/new
