@@ -108,8 +108,14 @@ export default function MonitorDetailPage() {
           </Link>
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-2xl font-bold">{monitor.name}</h1>
-              <p className="text-sm text-muted-foreground mt-1">{monitor.url}</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{monitor.name}</h1>
+                <Badge variant="outline">{monitor.type?.toUpperCase() || 'HTTP'}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {monitor.type === 'port' ? `${monitor.url}:${monitor.port}` : monitor.url}
+                {monitor.type === 'keyword' && ` (Keyword: ${monitor.keyword})`}
+              </p>
             </div>
             <Badge variant={monitor.status === "up" ? "default" : "destructive"}>{monitor.status}</Badge>
           </div>

@@ -21,6 +21,9 @@ export default function EditMonitorPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [type, setType] = useState("http")
+  const [keyword, setKeyword] = useState("")
+  const [port, setPort] = useState("")
 
   useEffect(() => {
     const fetchMonitor = async () => {
@@ -33,6 +36,9 @@ export default function EditMonitorPage() {
         setUrl(data.url)
         setMonitorInterval(data.check_interval?.toString() || "300")
         setIsActive(data.is_active ?? true)
+        setType(data.type || 'http')
+        setKeyword(data.keyword || '')
+        setPort(data.port ? data.port.toString() : '')
       }
       setLoading(false)
     }
@@ -57,6 +63,9 @@ export default function EditMonitorPage() {
           url,
           check_interval: Number.parseInt(monitorInterval),
           is_active: isActive,
+          type,
+          keyword: type === 'keyword' ? keyword : null,
+          port: type === 'port' ? Number.parseInt(port) : null
         }),
       })
 
@@ -102,14 +111,60 @@ export default function EditMonitorPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
+                <label className="text-sm font-medium block mb-2">Monitor Type</label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                >
+                  <option value="http">HTTP(s)</option>
+                  <option value="keyword">Keyword</option>
+                  <option value="port">Port</option>
+                  <option value="ping">Ping</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium block mb-2">Monitor Name</label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
 
               <div>
-                <label className="text-sm font-medium block mb-2">Website URL</label>
-                <Input type="url" value={url} onChange={(e) => setUrl(e.target.value)} required />
+                <label className="text-sm font-medium block mb-2">
+                  {type === 'port' ? 'Hostname / IP' : 'Website URL'}
+                </label>
+                <Input
+                  type={type === 'port' ? 'text' : 'url'}
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  required
+                />
               </div>
+
+              {type === 'keyword' && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">Keyword to find</label>
+                  <Input
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    placeholder="e.g., Welcome"
+                    required
+                  />
+                </div>
+              )}
+
+              {type === 'port' && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">Port</label>
+                  <Input
+                    type="number"
+                    value={port}
+                    onChange={(e) => setPort(e.target.value)}
+                    placeholder="e.g., 80"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-medium block mb-2">Check Interval</label>

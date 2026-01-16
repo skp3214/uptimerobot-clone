@@ -1,35 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSupabaseServer } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
-
-async function checkMonitorHealth(url: string): Promise<{
-  status: "up" | "down"
-  responseTime: number
-  statusCode: number
-}> {
-  const startTime = Date.now()
-  try {
-    const response = await fetch(url, { method: "HEAD", redirect: "follow" })
-    const responseTime = Date.now() - startTime
-
-    return {
-      status: response.ok ? "up" : "down",
-      responseTime,
-      statusCode: response.status,
-    }
-  } catch (error) {
-    return {
-      status: "down",
-      responseTime: Date.now() - startTime,
-      statusCode: 0,
-    }
-  }
-}
+import { checkMonitorHealth } from "@/lib/monitor"
 
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { monitorId, name, url, check_interval, is_active } = body
+    const { monitorId, name, url, check_interval, is_active, type = "http", keyword, port } = body
 
     const supabase = await getSupabaseServer()
 
@@ -42,7 +19,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get existing monitor to check if URL changed
+    // Get existing monitor to check if URL or Type changed
     const { data: existingMonitor } = await supabase
       .from("monitors")
       .select("*")
@@ -54,14 +31,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Monitor not found" }, { status: 404 })
     }
 
-    const urlChanged = existingMonitor.url !== url
+    const urlChanged = existingMonitor.url !== url || existingMonitor.type !== type || existingMonitor.keyword !== keyword || existingMonitor.port !== port
     let newStatus = existingMonitor.status
     let responseTime = 0
     let statusCode = 200
 
-    // If URL changed, re-check the health
+    // If URL/Type changed, re-check the health
     if (urlChanged) {
-      const healthCheck = await checkMonitorHealth(url)
+      const healthCheck = await checkMonitorHealth({
+        url, type, keyword, port
+      })
       newStatus = healthCheck.status
       responseTime = healthCheck.responseTime
       statusCode = healthCheck.statusCode
@@ -83,6 +62,9 @@ export async function PUT(request: NextRequest) {
         url,
         check_interval,
         is_active,
+        type,
+        keyword,
+        port,
         status: newStatus,
         last_check: urlChanged ? new Date().toISOString() : existingMonitor.last_check,
       })

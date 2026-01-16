@@ -1,35 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSupabaseServer } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
-
-async function checkMonitorHealth(url: string): Promise<{
-  status: "up" | "down"
-  responseTime: number
-  statusCode: number
-}> {
-  const startTime = Date.now()
-  try {
-    const response = await fetch(url, { method: "HEAD", redirect: "follow" })
-    const responseTime = Date.now() - startTime
-
-    return {
-      status: response.ok ? "up" : "down",
-      responseTime,
-      statusCode: response.status,
-    }
-  } catch (error) {
-    return {
-      status: "down",
-      responseTime: Date.now() - startTime,
-      statusCode: 0,
-    }
-  }
-}
+import { checkMonitorHealth } from "@/lib/monitor"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, url, check_interval } = body
+    const { name, url, check_interval, type = "http", keyword, port } = body
 
     const supabase = await getSupabaseServer()
 
@@ -43,7 +20,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if the URL is actually up or down
-    const { status: initialStatus, responseTime, statusCode } = await checkMonitorHealth(url)
+    // We pass a mock monitor object
+    const { status: initialStatus, responseTime, statusCode } = await checkMonitorHealth({
+      url, type, keyword, port
+    })
 
     // Insert monitor with actual status
     const { data: monitor, error: insertError } = await supabase
@@ -53,6 +33,9 @@ export async function POST(request: NextRequest) {
         name,
         url,
         check_interval,
+        type,
+        keyword,
+        port,
         status: initialStatus,
         last_check: new Date().toISOString(),
       })

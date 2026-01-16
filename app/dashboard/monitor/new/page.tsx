@@ -15,9 +15,11 @@ export default function NewMonitorPage() {
   const [name, setName] = useState("")
   const [url, setUrl] = useState("")
   const [monitorInterval, setMonitorInterval] = useState("300")
-  const [notificationEmail, setNotificationEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [type, setType] = useState("http")
+  const [keyword, setKeyword] = useState("")
+  const [port, setPort] = useState("")
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,6 +48,9 @@ export default function NewMonitorPage() {
           name,
           url,
           check_interval: Number.parseInt(monitorInterval),
+          type,
+          keyword: type === 'keyword' ? keyword : undefined,
+          port: type === 'port' ? Number.parseInt(port) : undefined
         }),
       })
 
@@ -82,25 +87,69 @@ export default function NewMonitorPage() {
         <Card className="max-w-2xl">
           <CardHeader>
             <CardTitle>Monitor Details</CardTitle>
-            <CardDescription>Set up a new website monitor to track its uptime and performance</CardDescription>
+            <CardDescription>Set up a new monitor to track uptime and performance</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="text-sm font-medium block mb-2">Monitor Type</label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                >
+                  <option value="http">HTTP(s)</option>
+                  <option value="keyword">Keyword</option>
+                  <option value="port">Port</option>
+                  <option value="ping">Ping</option>
+                </select>
+              </div>
+
               <div>
                 <label className="text-sm font-medium block mb-2">Monitor Name</label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., My Website" required />
               </div>
 
               <div>
-                <label className="text-sm font-medium block mb-2">Website URL</label>
+                <label className="text-sm font-medium block mb-2">
+                  {type === 'port' ? 'Hostname / IP' : 'URL'}
+                </label>
                 <Input
-                  type="url"
+                  type={type === 'port' ? 'text' : 'url'}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="https://example.com"
+                  placeholder={type === 'port' ? 'example.com' : 'https://example.com'}
                   required
                 />
               </div>
+
+              {type === 'keyword' && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">Keyword to find</label>
+                  <Input
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    placeholder="e.g., Welcome"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Monitor will define as Down if this keyword is missing
+                  </p>
+                </div>
+              )}
+
+              {type === 'port' && (
+                <div>
+                  <label className="text-sm font-medium block mb-2">Port</label>
+                  <Input
+                    type="number"
+                    value={port}
+                    onChange={(e) => setPort(e.target.value)}
+                    placeholder="e.g., 80"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-medium block mb-2">Check Interval</label>
@@ -114,17 +163,6 @@ export default function NewMonitorPage() {
                   <option value="1800">Every 30 minutes</option>
                   <option value="3600">Every 1 hour</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium block mb-2">Notification Email</label>
-                <Input
-                  type="email"
-                  value={notificationEmail}
-                  onChange={(e) => setNotificationEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                />
               </div>
 
               {error && <div className="text-sm text-destructive">{error}</div>}

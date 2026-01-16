@@ -1,30 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSupabaseServiceRole } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
-
-async function checkMonitorHealth(url: string): Promise<{
-  status: "up" | "down"
-  responseTime: number
-  statusCode: number
-}> {
-  const startTime = Date.now()
-  try {
-    const response = await fetch(url, { method: "HEAD", redirect: "follow" })
-    const responseTime = Date.now() - startTime
-
-    return {
-      status: response.ok ? "up" : "down",
-      responseTime,
-      statusCode: response.status,
-    }
-  } catch (error) {
-    return {
-      status: "down",
-      responseTime: Date.now() - startTime,
-      statusCode: 0,
-    }
-  }
-}
+import { checkMonitorHealth } from "@/lib/monitor"
 
 export async function GET(request: NextRequest) {
   // This endpoint should be called by a cron service (e.g., Vercel Cron)
@@ -32,7 +9,7 @@ export async function GET(request: NextRequest) {
 
   const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
-  
+
   // Allow both Bearer token (GitHub Actions) and Vercel Cron internal calls
   if (authHeader !== `Bearer ${cronSecret}` && authHeader !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -52,10 +29,11 @@ export async function GET(request: NextRequest) {
     }
 
     for (const monitor of monitors || []) {
-      const { status, responseTime, statusCode } = await checkMonitorHealth(monitor.url)
+      const { status, responseTime, statusCode } = await checkMonitorHealth(monitor)
       const previousStatus = monitor.status
 
       // Update monitor with latest check
+      // We also update type/keyword/port in case this was a first-run correction or similar, but mainly status/last_check
       await supabase
         .from("monitors")
         .update({
@@ -84,6 +62,7 @@ export async function GET(request: NextRequest) {
             monitor_id: monitor.id,
             status: incidentStatus,
             started_at: new Date().toISOString(),
+            // Store details about why it failed if possible? Schema doesn't support it yet likely.
           })
           .select()
           .single()
@@ -101,10 +80,16 @@ export async function GET(request: NextRequest) {
 
         if (user?.email && incident) {
           const subject = `ALERT: ${monitor.name} is ${status.toUpperCase()}`
+          let details = `<p>Type: ${monitor.type || 'http'}</p>`
+          if (monitor.type === 'keyword') details += `<p>Keyword: ${monitor.keyword}</p>`
+          if (monitor.type === 'port') details += `<p>Port: ${monitor.port}</p>`
+
           const html = `
             <h2>${monitor.name} is ${status.toUpperCase()}</h2>
-            <p>Website: ${monitor.url}</p>
+            <p>Target: ${monitor.url}</p>
+            ${details}
             <p>Status: ${status}</p>
+            <p>Status Code: ${statusCode}</p>
             <p>Response Time: ${responseTime}ms</p>
             <p>Time: ${new Date().toISOString()}</p>
           `
