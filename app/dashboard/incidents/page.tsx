@@ -4,14 +4,33 @@ import { useEffect, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, AlertCircle, CheckCircle } from "lucide-react"
+import { ArrowLeft, AlertCircle, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+
+interface Monitor {
+  id: string
+  name: string
+  url: string
+  user_id: string
+}
+
+interface Incident {
+  id: string
+  monitor_id: string
+  status: string
+  message: string
+  created_at: string
+  monitors?: {
+    name: string
+    url: string
+  }
+}
 
 export default function IncidentsPage() {
-  const [incidents, setIncidents] = useState<any[]>([])
+  const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(true)
-  const [userMonitors, setUserMonitors] = useState<any[]>([])
+  const [userMonitors, setUserMonitors] = useState<Monitor[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,8 +44,8 @@ export default function IncidentsPage() {
         const { data: monitorsData } = await supabase.from("monitors").select("id").eq("user_id", user.id)
 
         if (monitorsData) {
-          setUserMonitors(monitorsData)
-          const monitorIds = monitorsData.map((m) => m.id)
+          setUserMonitors(monitorsData as unknown as Monitor[])
+          const monitorIds = monitorsData.map((m: any) => m.id)
 
           // Get incidents for these monitors
           const { data: incidentsData } = await supabase
@@ -49,8 +68,7 @@ export default function IncidentsPage() {
     fetchData()
   }, [])
 
-  const downIncidents = incidents.filter((i) => i.status === "down")
-  const upIncidents = incidents.filter((i) => i.status === "up")
+
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
@@ -73,111 +91,42 @@ export default function IncidentsPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList>
-            <TabsTrigger value="all">All ({incidents.length})</TabsTrigger>
-            <TabsTrigger value="down">Down ({downIncidents.length})</TabsTrigger>
-            <TabsTrigger value="up">Up ({upIncidents.length})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-3">
-            {incidents.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">No incidents recorded</p>
-                </CardContent>
-              </Card>
-            ) : (
-              incidents.map((incident) => (
-                <Card key={incident.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-3 flex-1">
-                        {incident.status === "down" ? (
-                          <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                        ) : (
-                          <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        )}
-                        <div className="flex-1">
-                          <p className="font-medium">{incident.monitors?.name || "Monitor"}</p>
-                          <p className="text-sm text-muted-foreground">{incident.monitors?.url || ""}</p>
-                          <p className="text-sm mt-1">{incident.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(incident.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant={incident.status === "down" ? "destructive" : "default"}>
-                        {incident.status.toUpperCase()}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="down" className="space-y-3">
-            {downIncidents.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-4" />
-                  <p className="text-muted-foreground">No downtime incidents recorded</p>
-                </CardContent>
-              </Card>
-            ) : (
-              downIncidents.map((incident) => (
-                <Card key={incident.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-3 flex-1">
-                        <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="font-medium">{incident.monitors?.name}</p>
-                          <p className="text-sm text-muted-foreground">{incident.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(incident.created_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="destructive">DOWN</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="up" className="space-y-3">
-            {upIncidents.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-muted-foreground">No recovery incidents recorded</p>
-                </CardContent>
-              </Card>
-            ) : (
-              upIncidents.map((incident) => (
-                <Card key={incident.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-3 flex-1">
+        <div className="space-y-3">
+          {incidents.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground">No incidents recorded</p>
+              </CardContent>
+            </Card>
+          ) : (
+            incidents.map((incident) => (
+              <Card key={incident.id}>
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-3 flex-1">
+                      {incident.status === "open" ? (
+                        <XCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                      ) : (
                         <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <p className="font-medium">{incident.monitors?.name}</p>
-                          <p className="text-sm text-muted-foreground">{incident.message}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(incident.created_at).toLocaleString()}
-                          </p>
-                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium">{incident.monitors?.name || "Monitor"}</p>
+                        <p className="text-sm text-muted-foreground">{incident.monitors?.url || ""}</p>
+                        <p className="text-sm mt-1">{incident.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(incident.created_at).toLocaleString()}
+                        </p>
                       </div>
-                      <Badge variant="default">UP</Badge>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+                    <Badge variant={incident.status === "open" ? "destructive" : "default"}>
+                      {incident.status.toUpperCase()}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </main>
     </div>
   )

@@ -2,19 +2,45 @@
 
 import { useEffect, useState } from "react"
 import { getSupabaseClient } from "@/lib/supabase/client"
+import { User } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, LogOut, AlertCircle } from "lucide-react"
+import { Plus, LogOut, AlertCircle, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import MonitorsList from "@/components/monitors-list"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 
+interface Monitor {
+  id: string
+  name: string
+  url: string
+  status: string
+  user_id: string
+}
+
+interface Incident {
+  id: string
+  status: string
+  message: string
+  created_at: string
+  monitors?: {
+    name: string
+    url: string
+  }
+}
+
+interface MonitorCheck {
+  id: string
+  status: string
+  checked_at: string
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [monitors, setMonitors] = useState<any[]>([])
+  const [monitors, setMonitors] = useState<Monitor[]>([])
   const [analytics, setAnalytics] = useState({
     totalMonitors: 0,
     upMonitors: 0,
@@ -22,12 +48,13 @@ export default function DashboardPage() {
     averageUptime: 0,
     recentIncidents: 0,
   })
+  const [recentIncidents, setRecentIncidents] = useState<Incident[]>([])
   const router = useRouter()
 
   useEffect(() => {
     const supabase = getSupabaseClient()
 
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }: { data: { user: User | null } }) => {
       if (!data.user) {
         router.push("/auth")
       } else {
@@ -43,10 +70,11 @@ export default function DashboardPage() {
     const { data: monitorsData } = await supabase.from("monitors").select("*").eq("user_id", userId)
 
     if (monitorsData) {
-      setMonitors(monitorsData)
+      const typedMonitors = monitorsData as Monitor[]
+      setMonitors(typedMonitors)
 
-      const upCount = monitorsData.filter((m: any) => m.status === "up").length
-      const downCount = monitorsData.filter((m: any) => m.status === "down").length
+      const upCount = typedMonitors.filter((m) => m.status === "up").length
+      const downCount = typedMonitors.filter((m) => m.status === "down").length
 
       // Calculate average uptime
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -55,25 +83,30 @@ export default function DashboardPage() {
         .select("*")
         .in(
           "monitor_id",
-          monitorsData.map((m: any) => m.id),
+          typedMonitors.map((m) => m.id),
         )
         .gte("checked_at", thirtyDaysAgo)
 
       let avgUptime = 0
       if (checksData && checksData.length > 0) {
-        const upCount = checksData.filter((c: any) => c.status === "up").length
-        avgUptime = Math.round((upCount / checksData.length) * 100)
+        const typedChecks = checksData as MonitorCheck[]
+        const upCount = typedChecks.filter((c) => c.status === "up").length
+        avgUptime = Math.round((upCount / typedChecks.length) * 100)
       }
 
       // Get recent incidents
       const { data: incidentsData } = await supabase
         .from("incidents")
-        .select("*")
+        .select(`
+          *,
+          monitors (name, url)
+        `)
         .in(
           "monitor_id",
-          monitorsData.map((m: any) => m.id),
+          typedMonitors.map((m) => m.id),
         )
-        .gte("created_at", thirtyDaysAgo)
+        .order("created_at", { ascending: false })
+        .limit(10)
 
       setAnalytics({
         totalMonitors: monitorsData.length,
@@ -82,6 +115,7 @@ export default function DashboardPage() {
         averageUptime: avgUptime,
         recentIncidents: incidentsData?.length || 0,
       })
+      setRecentIncidents((incidentsData as unknown as Incident[]) || [])
     }
   }
 
@@ -188,11 +222,42 @@ export default function DashboardPage() {
                 <Button variant="outline">View All</Button>
               </Link>
             </div>
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">Incidents will appear here when status changes occur</p>
-              </CardContent>
-            </Card>
+            {recentIncidents.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-muted-foreground">Incidents will appear here when status changes occur</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {recentIncidents.map((incident) => (
+                  <Card key={incident.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex gap-3 flex-1">
+                          {incident.status === "open" ? (
+                            <XCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                          ) : (
+                            <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                          )}
+                          <div className="flex-1">
+                            <p className="font-medium">{incident.monitors?.name || "Monitor"}</p>
+                            <p className="text-sm text-muted-foreground">{incident.monitors?.url || ""}</p>
+                            <p className="text-sm mt-1">{incident.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(incident.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant={incident.status === "open" ? "destructive" : "default"}>
+                          {incident.status.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>

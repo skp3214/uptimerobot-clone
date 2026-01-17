@@ -17,7 +17,9 @@ export default function MonitorDetailPage() {
   const [incidents, setIncidents] = useState<any[]>([])
   const [chartData, setChartData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [uptime, setUptime] = useState(0)
+  const [uptime30d, setUptime30d] = useState(0)
+  const [uptime7d, setUptime7d] = useState(0)
+  const [uptime24h, setUptime24h] = useState(0)
 
   useEffect(() => {
     const fetchMonitorData = async () => {
@@ -53,13 +55,29 @@ export default function MonitorDetailPage() {
           .order("checked_at", { ascending: true })
 
         if (checksData && checksData.length > 0) {
-          const upCount = checksData.filter((c: any) => c.status === "up").length
-          const totalCount = checksData.length
-          setUptime(Math.round((upCount / totalCount) * 100))
+          const now = Date.now()
+          const oneDayAgo = now - 24 * 60 * 60 * 1000
+          const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000
 
-          // Prepare chart data (sample every 4th check to avoid too many data points)
-          const sampledData = checksData
-            .filter((_: any, index: number) => index % 4 === 0)
+          // Helper to calc uptime
+          const calcUptime = (checks: any[]) => {
+            if (checks.length === 0) return 0
+            const up = checks.filter((c: any) => c.status === "up").length
+            return Math.round((up / checks.length) * 100)
+          }
+
+          setUptime30d(calcUptime(checksData))
+
+          const checks7d = checksData.filter((c: any) => new Date(c.checked_at).getTime() > sevenDaysAgo)
+          setUptime7d(calcUptime(checks7d))
+
+          const checks24h = checksData.filter((c: any) => new Date(c.checked_at).getTime() > oneDayAgo)
+          setUptime24h(calcUptime(checks24h))
+
+          // Prepare chart data (Last 24 hours, all points)
+          const chartChecks = checks24h.length > 0 ? checks24h : checksData.slice(-50) // Fallback if no 24h data
+
+          const formattedChartData = chartChecks
             .map((check: any) => ({
               time: new Date(check.checked_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -69,7 +87,7 @@ export default function MonitorDetailPage() {
               status: check.status === "up" ? 1 : 0,
             }))
 
-          setChartData(sampledData)
+          setChartData(formattedChartData)
         }
       }
 
@@ -123,7 +141,7 @@ export default function MonitorDetailPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Current Status</CardTitle>
@@ -138,8 +156,26 @@ export default function MonitorDetailPage() {
                 <span className="text-lg font-bold capitalize">{monitor.status}</span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                Last checked: {new Date(monitor.last_check_time).toLocaleString()}
+                Last checked: {new Date(monitor.last_check_time || monitor.updated_at).toLocaleString()}
               </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">24-Hour Uptime</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{uptime24h}%</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">7-Day Uptime</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{uptime7d}%</div>
             </CardContent>
           </Card>
 
@@ -148,25 +184,14 @@ export default function MonitorDetailPage() {
               <CardTitle className="text-sm font-medium">30-Day Uptime</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{uptime}%</div>
-              <p className="text-xs text-muted-foreground mt-2">Response: {monitor.response_time}ms</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Incidents</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{incidents.length}</div>
-              <p className="text-xs text-muted-foreground mt-2">Last 30 days</p>
+              <div className="text-2xl font-bold">{uptime30d}%</div>
             </CardContent>
           </Card>
         </div>
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Response Time (Last 30 days)</CardTitle>
+            <CardTitle>Response Time (Last 24 hours)</CardTitle>
           </CardHeader>
           <CardContent>
             {chartData.length > 0 ? (

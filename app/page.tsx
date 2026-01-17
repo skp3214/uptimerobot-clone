@@ -47,11 +47,7 @@ export default async function Home() {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
-            <Link href="/status">
-              <Button size="lg" variant="outline">
-                View Status Pages
-              </Button>
-            </Link>
+
           </div>
         </div>
 

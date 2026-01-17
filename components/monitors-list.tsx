@@ -5,7 +5,7 @@ import { getSupabaseClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Edit2, Trash2 } from "lucide-react"
+import { Edit2, Trash2, BarChart2 } from "lucide-react"
 import Link from "next/link"
 
 export default function MonitorsList() {
@@ -109,8 +109,13 @@ export default function MonitorsList() {
             <div className="flex gap-2">
               <Link href={`/dashboard/monitor/${monitor.id}`} className="flex-1">
                 <Button variant="outline" size="sm" className="w-full bg-transparent">
-                  <Edit2 className="w-4 h-4 mr-1" />
-                  Edit
+                  <BarChart2 className="w-4 h-4 mr-1" />
+                  Stats
+                </Button>
+              </Link>
+              <Link href={`/dashboard/monitor/${monitor.id}/edit`}>
+                <Button variant="outline" size="sm" className="bg-transparent">
+                  <Edit2 className="w-4 h-4" />
                 </Button>
               </Link>
               <Button
