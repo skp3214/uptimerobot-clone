@@ -106,7 +106,7 @@ export default function DashboardPage() {
           typedMonitors.map((m) => m.id),
         )
         .order("created_at", { ascending: false })
-        .limit(10)
+        .limit(5)
 
       setAnalytics({
         totalMonitors: monitorsData.length,
