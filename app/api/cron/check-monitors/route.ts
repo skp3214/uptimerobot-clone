@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getSupabaseServiceRole } from "@/lib/supabase/server"
 import { sendEmail } from "@/lib/email"
 import { checkMonitorHealth } from "@/lib/monitor"
+import { getBaseUrl } from "@/lib/url"
 
 export async function GET(request: NextRequest) {
   // This endpoint should be called by a cron service (e.g., Vercel Cron)
@@ -84,6 +85,9 @@ export async function GET(request: NextRequest) {
           if (monitor.type === 'keyword') details += `<p>Keyword: ${monitor.keyword}</p>`
           if (monitor.type === 'port') details += `<p>Port: ${monitor.port}</p>`
 
+          const baseUrl = getBaseUrl()
+          const monitorUrl = `${baseUrl}/dashboard/monitor/${monitor.id}`
+
           const html = `
             <h2>${monitor.name} is ${status.toUpperCase()}</h2>
             <p>Target: ${monitor.url}</p>
@@ -92,6 +96,8 @@ export async function GET(request: NextRequest) {
             <p>Status Code: ${statusCode}</p>
             <p>Response Time: ${responseTime}ms</p>
             <p>Time: ${new Date().toISOString()}</p>
+            <br />
+            <p><a href="${monitorUrl}" style="background-color: #0070f3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Monitor Details</a></p>
           `
 
           try {
