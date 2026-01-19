@@ -5,13 +5,11 @@ import { checkMonitorHealth } from "@/lib/monitor"
 import { getBaseUrl } from "@/lib/url"
 
 export async function GET(request: NextRequest) {
-  // This endpoint should be called by a cron service (e.g., Vercel Cron)
   // to trigger monitor checks every 5 minutes
 
   const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
 
-  // Allow both Bearer token (GitHub Actions) and Vercel Cron internal calls
   if (authHeader !== `Bearer ${cronSecret}` && authHeader !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -63,7 +61,7 @@ export async function GET(request: NextRequest) {
             monitor_id: monitor.id,
             status: incidentStatus,
             started_at: new Date().toISOString(),
-            // Store details about why it failed if possible? Schema doesn't support it yet likely.
+            // Store details about why it failed if possible
           })
           .select()
           .single()
